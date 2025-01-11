@@ -1,14 +1,49 @@
-import React from "react";
+import React, { useState } from "react";
 import { Canvas, Rect } from "@shopify/react-native-skia";
-import { Dimensions } from "react-native";
+import { Dimensions, View, Pressable, StyleSheet, Text } from "react-native";
+import {
+  GestureHandlerRootView,
+  PinchGestureHandler,
+  PanGestureHandler,
+  TapGestureHandler,
+  PinchGestureHandlerGestureEvent,
+  PanGestureHandlerGestureEvent,
+  TapGestureHandlerGestureEvent,
+  Gesture,
+  GestureDetector,
+  PanGesture,
+} from "react-native-gesture-handler";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  useAnimatedGestureHandler,
+  withDecay,
+  runOnJS,
+  clamp,
+} from "react-native-reanimated";
 
-export default function App() {
+export default function Index() {
   const { width, height } = Dimensions.get("window");
-  const pixelSize = 2; 
-
+  const pixelSize = 2;
   const numRows = Math.ceil(height / pixelSize);
   const numCols = Math.ceil(width / pixelSize);
 
+  const minZoom = 1;
+  const maxZoom = 2;
+
+  const scale = useSharedValue(minZoom); 
+  const translateX = useSharedValue(0); 
+  const translateY = useSharedValue(0); 
+
+  const aspectRatio = width / height;
+  const maxTranslateX = (width * (maxZoom - 1)) / 2;
+  const maxTranslateY = (height * (maxZoom - 1)) / 2;
+
+  const resetZoomAndPan = () => {
+    scale.value = minZoom;
+    translateX.value = 0;
+    translateY.value = 0;
+  };
 
   const mandelbrot = (cx: number, cy: number): number => {
     let x = 0;
@@ -25,30 +60,72 @@ export default function App() {
     return n;
   };
 
+
+  const zoomhHandler =
+    useAnimatedGestureHandler<PinchGestureHandlerGestureEvent>({
+      onActive: (event) => {
+        scale.value = clamp(event.scale, minZoom, maxZoom); 
+      },
+    });
+
+
+  const doubleTapHandler =
+    useAnimatedGestureHandler<TapGestureHandlerGestureEvent>({
+      onActive: () => {
+        runOnJS(resetZoomAndPan)(); 
+      },
+    });
+
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { scale: scale.value },
+      { translateX: translateX.value },
+      { translateY: translateY.value },
+    ],
+  }));
+
   return (
-    <Canvas style={{ width, height }}>
-      {Array.from({ length: numRows }).map((_, row) =>
-        Array.from({ length: numCols }).map((_, col) => {
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <TapGestureHandler
+        onGestureEvent={doubleTapHandler}
+        numberOfTaps={2} 
+      >
+        <Animated.View style={{ flex: 1 }}>
+            <Animated.View style={[{ flex: 1 }, animatedStyle]}>
+              <PinchGestureHandler onGestureEvent={zoomhHandler}>
+                <Animated.View style={{ flex: 1 }}>
+                  <Canvas style={{ width, height }}>
+                    {Array.from({ length: numRows }).map((_, row) =>
+                      Array.from({ length: numCols }).map((_, col) => {
+                        const cx =
+                          ((col / numCols) * 3 - 2) / scale.value + 0.25;
+                        const cy = ((row / numRows) * 3 - 1.5) / scale.value;
 
-          const cx = ((col / numCols) * 3 - 2.5)+0.25; 
-          const cy = ((row / numRows) * 3 - 1)-0.25;     
+                        const iteration = mandelbrot(cx, cy);
+                        const colorIntensity = Math.floor(
+                          (iteration / 100) * 255
+                        );
 
-          const iteration = mandelbrot(cx, cy);
-          const colorIntensity = Math.floor((iteration / 100) * 255);
-
-          return (
-            <Rect
-              key={`${row}-${col}`}
-              x={col * pixelSize}
-              y={row * pixelSize}
-              width={pixelSize}
-              height={pixelSize}
-              color={`rgb(${colorIntensity}, ${colorIntensity}, ${colorIntensity})`}
-            />
-          );
-        })
-      )}
-    </Canvas>
+                        return (
+                          <Rect
+                            key={`${row}-${col}`}
+                            x={col * pixelSize}
+                            y={row * pixelSize}
+                            width={pixelSize}
+                            height={pixelSize}
+                            color={`rgb(${colorIntensity}, ${colorIntensity}, ${colorIntensity})`}
+                          />
+                        );
+                      })
+                    )}
+                  </Canvas>
+                </Animated.View>
+              </PinchGestureHandler>
+            </Animated.View>
+        </Animated.View>
+      </TapGestureHandler>
+    </GestureHandlerRootView>
   );
-};
+}
 

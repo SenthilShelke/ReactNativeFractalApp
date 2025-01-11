@@ -1,9 +1,9 @@
 {
   "expo": {
-    "name": "NativeFractalApp",
-    "slug": "NativeFractalApp",
+    "name": "ReactNativeFractalApp",
+    "slug": "ReactNativeFractalApp",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "landscape",
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
